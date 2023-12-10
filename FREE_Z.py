@@ -34,11 +34,12 @@ import math
 import sys
 import re
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 import os
 import operator
 
 # turn on/off graphics
-graphics = 0
+graphics = 1
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3
@@ -352,35 +353,43 @@ class myNode():
             posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
             posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
             
-            posz = random.uniform(-self.maxHeight, self.maxHeight)+bsz
+            
             if len(nodes) > 0:
                 for index, n in enumerate(nodes):
+                    
+                    posz = random.uniform(0, self.maxHeight)
+
                     dist = np.sqrt(((abs(n.x-posx))**2)+((abs(n.y-posy))**2)+((abs(n.z-posz))**2))
                     if dist >= 10:
                         found = 1
                         self.x = posx
                         self.y = posy
                         self.z = posz
+                        self.last_z = self.z - n.z
                     else:
                         rounds = rounds + 1
                         if rounds == 100:
                             print("could not place new node, giving up")
                             exit(-1)
             else:
+                posz = random.uniform(-self.maxHeight, self.maxHeight)+bsz
                 print("first node")
                 self.x = posx
                 self.y = posy
                 self.z = posz
                 found = 1
-        self.dist = np.sqrt((self.x-bsx)*(self.x-bsx)+(self.y-bsy)*(self.y-bsy)+(self.z-bsz)*(self.z-bsz))
+        self.dist = np.sqrt((self.x-bsx)*(self.x-bsx)+(self.y-bsy)*(self.y-bsy)+(self.z- (bsz + self.last_z) )*(self.z- (bsz + self.last_z)))
         print(('node %d' %nodeid, "x", self.x, "y", self.y, "z", self.z, "dist: ", self.dist))
         # graphics for node
         global graphics
         if (graphics == 1):
             global ax
-            ax.add_artist(plt.Circle((self.x, self.y), 2, fill=True, color='blue'))
+            
+            radius = 2  # Radius of the sphere
 
-#
+            # Create a sphere
+            ax.scatter(self.x, self.y, self.z, color='blue', s=25)  # s is the size of the point
+
 # this function creates a dummy node
 #
 class myDummyNode():
@@ -536,7 +545,7 @@ class myPacket():
         self.arriveTime = 0
 
         # Calculate 3D distance
-        dist3D = math.sqrt(distance ** 2 + elevation ** 2)
+        dist3D = distance
 
         if var == 0:
             Lpl = Lpld0 + 10 * gamma * math.log10(dist3D / d0)
@@ -566,7 +575,7 @@ def transmit(env,node, chanl):
         else:
             node.lstretans = 0
         # get the right slot
-        #print "chanl: ", chanl, "slotnumber: ", node.s1parameters.slotnumber, " slottime: ", node.s2parameters.slottime, " slotsperframe: ", " framelength: ", node.s2parameters.framelength
+        #print "chanl: ", chanl, "slotnumber: ", node.s1parameters.slotnumber, " slottime: ", node.s2parameters.slottime, " slotsperframe:"\t" framelength: ", node.s2parameters.framelength
         yield env.timeout((node.s1parameters.slotnumber*node.s2parameters.slottime)+(chanl*node.s2parameters.slottime))
         # wait for one guard
         yield env.timeout(Guards[node.s1parameters.sf-7]/1000.0)
@@ -728,26 +737,37 @@ print("maxDist:", maxDist)
 # base station placement
 bsx = maxDist+10
 bsy = maxDist+10
-bsz = maxHeight
+bsz = 0
 
 
 xmax = bsx + maxDist + 10
 ymax = bsy + maxDist + 10
 zmax = bsz + maxHeight
 
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
 
 # prepare graphics and add sink
 if (graphics == 1):
-    plt.ion()
-    plt.figure()
-    ax = plt.gcf().gca()
-    # XXX should be base station position
-    ax.add_artist(plt.Circle((bsx, bsy), 3, fill=True, color='green'))
-    ax.add_artist(plt.Circle((bsx, bsy), maxDist, fill=False, color='green'))
+
+
+    # Plotting the base station as a point
+    ax.scatter(bsx, bsy, bsz, color='green', s=100)  # s is the size of the point
+
+    # To represent the range, you can plot points on a sphere (this is a simplified representation)
+    u, v = np.mgrid[0:2*np.pi:20j, 0:np.pi:10j]
+    x = bsx + maxDist * np.cos(u) * np.sin(v)
+    y = bsy + maxDist * np.sin(u) * np.sin(v)
+    z = bsz + maxDist * np.cos(v)
+    # ax.plot_wireframe(x, y, z, color="green")
+
+    ax.set_xlabel('X axis')
+    ax.set_ylabel('Y axis')
+    ax.set_zlabel('Z axis') 
 
 for i in range(0,nrNodes):
     # myNode takes period (in ms), base station id packetlen (in Bytes)
-    node = myNode(i,bsId, datasize)
+    node = myNode(i,bsId, datasize,maxHeight=50)
     nodes.append(node)
     node.s1parameters = stage1(node.nodeid, node.dist)
 
@@ -790,7 +810,7 @@ if (graphics == 1):
     plt.xlim([0, xmax])
     plt.ylim([0, ymax])
     plt.draw()
-    plt.show()
+    plt.savefig("Example3d.pdf")
 
 # start simulation
 env.run()
@@ -862,18 +882,16 @@ print("CollectionTime: ", env.now)
 fname = str("confirmabletdmaSFTX_Z") + ".dat"
 print(fname)
 if os.path.isfile(fname):
-    res= "\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Framelengths)
+    res= "\n" + str(sys.argv[4]) +"\t" + str(full_collision) +"\t" + str(nrNodes) +"\t" + str(datasize) +"\t" + str(sent) +"\t"  + str(nrCollisions) +"\t"  + str(nrLost) +"\t"  + str(nrLostError) +"\t" +str(nrNoACK) +"\t" +str(nrACKLost) +"\t" + str(env.now)+"\t" + str(der1) +"\t" + str(der2)  +"\t" + str(energy) +"\t"  + str(nodefair1) +"\t"  + str(nodefair2) +"\t"  + str(SFdistribution) +"\t"  + str(Slotlengths) +"\t"  + str(Framelengths) +"\t"  + str(Framelengths)
 else:
-    res = "#randomseed, collType, nrNodes, DataSize, nrTransmissions, nrCollisions, nrlost, nrLostError, nrnoack, nracklost, CollectionTIme, DER1, DER2, OverallEnergy, nodefair1, nodefair2, sfdistribution, slotlengths, framelengths, Guards\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Guards)
+    res = "randomseed\tcollType\tnrNodes\tDataSize\tnrTransmissions\tnrCollisions\tnrlost\tnrLostError\tnrnoack\tnracklost\tCollectionTIme\tDER1\tDER2\tOverallEnergy\tnodefair1\tnodefair2\tsfdistribution\tslotlengths\tframelengths\tGuards\n" + str(sys.argv[4]) +"\t" + str(full_collision) +"\t" + str(nrNodes) +"\t" + str(datasize) +"\t" + str(sent) +"\t"  + str(nrCollisions) +"\t"  + str(nrLost) +"\t"  + str(nrLostError) +"\t" +str(nrNoACK) +"\t" +str(nrACKLost) +"\t" + str(env.now)+"\t" + str(der1) +"\t" + str(der2)  +"\t" + str(energy) +"\t"  + str(nodefair1) +"\t"  + str(nodefair2) +"\t"  + str(SFdistribution) +"\t"  + str(Slotlengths) +"\t"  + str(Framelengths) +"\t"  + str(Guards)
 # newres=re.sub('[^#a-zA-Z0-9 \n\.]','',res)
 # print(newres)
 with open(fname, "a") as myfile:
     myfile.write(res)
 myfile.close()
 
-# this can be done to keep graphics visible
-if (graphics == 1):
-    input('Press Enter to continue ...')
+
 
 # with open('nodes.txt','w') as nfile:
 #     for n in nodes:

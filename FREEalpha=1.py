@@ -37,8 +37,15 @@ import matplotlib.pyplot as plt
 import os
 import operator
 
+from matplotlib import rcParams
+
+rcParams['font.family'] = 'serif'
+rcParams['font.serif'] = ['Times New Roman']
+rcParams['font.size'] = 18
+rcParams['text.usetex'] = True
+
 # turn on/off graphics
-graphics = 0
+graphics = 1
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3
@@ -561,7 +568,7 @@ def transmit(env,node, chanl):
         else:
             node.lstretans = 0
         # get the right slot
-        #print "chanl: ", chanl, "slotnumber: ", node.s1parameters.slotnumber, " slottime: ", node.s2parameters.slottime, " slotsperframe: ", " framelength: ", node.s2parameters.framelength
+        #print "chanl: ", chanl, "slotnumber: ", node.s1parameters.slotnumber, " slottime: ", node.s2parameters.slottime, " slotsperframe: "\t" framelength: ", node.s2parameters.framelength
         yield env.timeout((node.s1parameters.slotnumber*node.s2parameters.slottime)+(chanl*node.s2parameters.slottime))
         # wait for one guard
         yield env.timeout(Guards[node.s1parameters.sf-7]/1000.0)
@@ -779,7 +786,10 @@ if (graphics == 1):
     plt.xlim([0, xmax])
     plt.ylim([0, ymax])
     plt.draw()
-    plt.show()
+    plt.title("Example of Sensor Setup")
+    plt.xlabel("Meters")
+    plt.ylabel("Meters")
+    plt.savefig("Example.pdf")
 
 # start simulation
 env.run()
@@ -851,9 +861,9 @@ print("CollectionTime: ", env.now)
 fname = str("confirmabletdmaSFTX") + ".dat"
 print(fname)
 if os.path.isfile(fname):
-    res= "\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Framelengths)
+    res= "\n" + str(sys.argv[4]) + "\t" + str(full_collision) + "\t" + str(nrNodes) + "\t" + str(datasize) + "\t" + str(sent) + "\t"  + str(nrCollisions) + "\t"  + str(nrLost) + "\t"  + str(nrLostError) + "\t" +str(nrNoACK) + "\t" +str(nrACKLost) + "\t" + str(env.now)+ "\t" + str(der1) + "\t" + str(der2)  + "\t" + str(energy) + "\t"  + str(nodefair1) + "\t"  + str(nodefair2) + "\t"  + str(SFdistribution) + "\t"  + str(Slotlengths) + "\t"  + str(Framelengths) + "\t"  + str(Framelengths)
 else:
-    res = "#randomseed, collType, nrNodes, DataSize, nrTransmissions, nrCollisions, nrlost, nrLostError, nrnoack, nracklost, CollectionTIme, DER1, DER2, OverallEnergy, nodefair1, nodefair2, sfdistribution, slotlengths, framelengths, Guards\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Guards)
+    res = "randomseed\tcollType\tnrNodes\tDataSize\tnrTransmissions\tnrCollisions\tnrlost\tnrLostError\tnrnoack\tnracklost\tCollectionTIme\tDER1\tDER2\tOverallEnergy\tnodefair1\tnodefair2\tsfdistribution\tslotlengths\tframelengths\tGuards\n" + str(sys.argv[4]) + "\t" + str(full_collision) + "\t" + str(nrNodes) + "\t" + str(datasize) + "\t" + str(sent) + "\t"  + str(nrCollisions) + "\t"  + str(nrLost) + "\t"  + str(nrLostError) + "\t" +str(nrNoACK) + "\t" +str(nrACKLost) + "\t" + str(env.now)+ "\t" + str(der1) + "\t" + str(der2)  + "\t" + str(energy) + "\t"  + str(nodefair1) + "\t"  + str(nodefair2) + "\t"  + str(SFdistribution) + "\t"  + str(Slotlengths) + "\t"  + str(Framelengths) + "\t"  + str(Guards)
 
 # newres=re.sub('[^#a-zA-Z0-9 \n\.]','',res)
 # print(newres)
@@ -862,8 +872,6 @@ with open(fname, "a") as myfile:
 myfile.close()
 
 # this can be done to keep graphics visible
-if (graphics == 1):
-    input('Press Enter to continue ...')
 
 # with open('nodes.txt','w') as nfile:
 #     for n in nodes:
