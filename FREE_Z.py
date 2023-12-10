@@ -520,12 +520,8 @@ class dummystage2():
 # it also sets all parameters, currently random
 #
 class myPacket():
-    def __init__(self, nodeid, chanls, freq, sf, bw, cr, txpow, distance):
-        global gamma
-        global d0
-        global var
-        global Lpld0
-        global GL
+    def __init__(self, nodeid, chanls, freq, sf, bw, cr, txpow, distance, elevation):
+        global gamma, d0, var, Lpld0, GL
 
         self.nodeid = nodeid
         self.chanls = chanls
@@ -534,21 +530,21 @@ class myPacket():
         self.bw = bw
         self.cr = cr
         self.txpow = txpow
-        # transmission range, needs update XXX
-        self.transRange = 150
-        self.pl = LorawanHeader+PcktLength_SF[self.sf-7]
-        self.symTime = (2.0**self.sf)/self.bw
+        self.transRange = 150  # Transmission range, needs update
+        self.pl = LorawanHeader + PcktLength_SF[self.sf - 7]
+        self.symTime = (2.0 ** self.sf) / self.bw
         self.arriveTime = 0
+
+        # Calculate 3D distance
+        dist3D = math.sqrt(distance ** 2 + elevation ** 2)
+
         if var == 0:
-            Lpl = Lpld0 + 10*gamma*math.log10(distance/d0)
+            Lpl = Lpld0 + 10 * gamma * math.log10(dist3D / d0)
         else:
-            Lpl = Lpld0 + 10*gamma*math.log10(distance/d0) + np.random.normal(-var, var)
+            Lpl = Lpld0 + 10 * gamma * math.log10(dist3D / d0) + np.random.normal(-var, var)
 
         self.rssi = self.txpow - GL - Lpl
-        #print "node id", self.nodeid, "symTime ", self.symTime, "rssi", self.rssi
-        self.rectime = airtime(self.sf,self.cr,self.pl,self.bw)
-        #print "rectime node ", self.nodeid, "  ", self.rectime
-        # denote if packet is collided
+        self.rectime = airtime(self.sf, self.cr, self.pl, self.bw)
         self.collided = 0
         self.processed = 0
         self.lost = False
@@ -773,11 +769,11 @@ for sf in range(7,13):
 for i in range(0,nrNodes):
     nodes[i].s2parameters = stage2(nodes[i].nodeid, nodes[i].s1parameters.sf, nodes[i].s1parameters.rectime)
     if (nodes[i].s1parameters.sf == 7):
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 872000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 872000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
     elif (nodes[i].s1parameters.sf == 8):
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 864000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 864000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
     else:
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
     env.process(transmit(env,nodes[i], 0))
     for chanl in range(1,nodes[i].s1parameters.chanls):
         # create dummy nodes to carry the packets on different channels
@@ -785,7 +781,7 @@ for i in range(0,nrNodes):
         dummynodes.append(node)
         node.s1parameters = dummystage1(nodes[i].nodeid, nodes[i].s1parameters.slotnumber, nodes[i].s1parameters.txpow, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.sf, nodes[i].s1parameters.rectime, nodes[i].s1parameters.chanls)
         node.s2parameters = dummystage2(nodes[i].nodeid, nodes[i].s2parameters.slottime, nodes[i].s2parameters.framelength)
-        node.packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000 + (chanl*4000000), nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist)
+        node.packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000 + (chanl*4000000), nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z )
         #dummynodes.append(node)
         env.process(transmit(env,node, chanl))
 
@@ -863,16 +859,16 @@ print("CollectionTime: ", env.now)
 
 # save experiment data into a dat file that can be read by e.g. gnuplot
 # name of file would be:  exp0.dat for experiment 0
-fname = str("confirmabletdmaSFTX") + ".dat"
+fname = str("confirmabletdmaSFTX_Z") + ".dat"
 print(fname)
 if os.path.isfile(fname):
     res= "\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Framelengths)
 else:
     res = "#randomseed, collType, nrNodes, DataSize, nrTransmissions, nrCollisions, nrlost, nrLostError, nrnoack, nracklost, CollectionTIme, DER1, DER2, OverallEnergy, nodefair1, nodefair2, sfdistribution, slotlengths, framelengths, Guards\n" + str(sys.argv[4]) + ", " + str(full_collision) + ", " + str(nrNodes) + ", " + str(datasize) + ", " + str(sent) + ", "  + str(nrCollisions) + ", "  + str(nrLost) + ", "  + str(nrLostError) + ", " +str(nrNoACK) + ", " +str(nrACKLost) + ", " + str(env.now)+ ", " + str(der1) + ", " + str(der2)  + ", " + str(energy) + ", "  + str(nodefair1) + ", "  + str(nodefair2) + ", "  + str(SFdistribution) + ", "  + str(Slotlengths) + ", "  + str(Framelengths) + ", "  + str(Guards)
-newres=re.sub('[^#a-zA-Z0-9 \n\.]','',res)
-print(newres)
+# newres=re.sub('[^#a-zA-Z0-9 \n\.]','',res)
+# print(newres)
 with open(fname, "a") as myfile:
-    myfile.write(newres)
+    myfile.write(res)
 myfile.close()
 
 # this can be done to keep graphics visible
