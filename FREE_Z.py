@@ -41,6 +41,8 @@ import operator
 # turn on/off graphics
 graphics = 0
 
+base_station_model =  False
+
 # this is an array with measured values for sensitivity
 # see paper, Table 3
 #sf7 = np.array([7,-126.5,-124.25,-120.75])
@@ -349,16 +351,18 @@ class myNode():
             b = random.random()
             if b<a:
                 a,b = b,a
-            # posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
-            # posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
             
-            posx = bsx+100
-            posy = 0
+            if base_station_model:
+                posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
+                posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
+            else:
+                posx = 100+bsx
+                posy = 0
             
             if len(nodes) > 0:
                 for index, n in enumerate(nodes):
                     
-                    posz = random.uniform(-self.maxHeight, self.maxHeight)
+                    posz = random.uniform(0, self.maxHeight)+bsz
                     dist = np.sqrt(((abs(n.x-posx))**2)+((abs(n.y-posy))**2)+((abs(n.z-posz))**2))
                     if dist >= 10:
                         found = 1
@@ -371,7 +375,7 @@ class myNode():
                             print("could not place new node, giving up")
                             exit(-1)
             else:
-                posz = random.uniform(-self.maxHeight, self.maxHeight)+bsz
+                posz = random.uniform(0, self.maxHeight)+bsz
                 print("first node")
                 self.x = posx
                 self.y = posy
@@ -544,7 +548,7 @@ class myPacket():
         self.arriveTime = 0
 
         # Calculate 3D distance
-        dist3D = distance
+        dist3D = math.sqrt(distance**2 + elevation**2)
 
         if var == 0:
             Lpl = Lpld0 + 10 * gamma * math.log10(dist3D / d0)
@@ -687,6 +691,8 @@ if len(sys.argv) >= 4:
         bsx = float(sys.argv[6])
         bsy = float(sys.argv[7])
         bsz = float(sys.argv[8])
+        maxHeight = float(sys.argv[9])
+        
         set_bses = True
     
     print("Nodes:", nrNodes)
@@ -740,7 +746,6 @@ GL = 0
 minsensi = np.amin(sensi[:,[125,250,500].index(Bandwidth) + 1])
 Lpl = Ptx - minsensi
 maxDist = d0*(10**((Lpl-Lpld0)/(10.0*gamma)))
-maxHeight = 50
 print("maxDist:", maxDist)
 
 
@@ -749,6 +754,7 @@ if not set_bses:
     bsx = maxDist+10
     bsy = maxDist+10
     bsz = 0
+    maxHeight = 50
 
 
 xmax = bsx + maxDist + 10
@@ -778,7 +784,7 @@ if (graphics == 1):
 
 for i in range(0,nrNodes):
     # myNode takes period (in ms), base station id packetlen (in Bytes)
-    node = myNode(i,bsId, datasize,maxHeight=50)
+    node = myNode(i,bsId, datasize,maxHeight=maxHeight)
     nodes.append(node)
     node.s1parameters = stage1(node.nodeid, node.dist)
 
@@ -800,11 +806,11 @@ for sf in range(7,13):
 for i in range(0,nrNodes):
     nodes[i].s2parameters = stage2(nodes[i].nodeid, nodes[i].s1parameters.sf, nodes[i].s1parameters.rectime)
     if (nodes[i].s1parameters.sf == 7):
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 872000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 872000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, bsz - nodes[i].z)
     elif (nodes[i].s1parameters.sf == 8):
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 864000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 864000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, bsz - nodes[i].z)
     else:
-        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z)
+        nodes[i].packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000, nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, bsz - nodes[i].z)
     env.process(transmit(env,nodes[i], 0))
     for chanl in range(1,nodes[i].s1parameters.chanls):
         # create dummy nodes to carry the packets on different channels
@@ -812,7 +818,7 @@ for i in range(0,nrNodes):
         dummynodes.append(node)
         node.s1parameters = dummystage1(nodes[i].nodeid, nodes[i].s1parameters.slotnumber, nodes[i].s1parameters.txpow, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.sf, nodes[i].s1parameters.rectime, nodes[i].s1parameters.chanls)
         node.s2parameters = dummystage2(nodes[i].nodeid, nodes[i].s2parameters.slottime, nodes[i].s2parameters.framelength)
-        node.packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000 + (chanl*4000000), nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, nodes[i-1].z - nodes[i].z )
+        node.packet = myPacket(nodes[i].nodeid, nodes[i].s1parameters.chanls, 860000000 + (chanl*4000000), nodes[i].s1parameters.sf, nodes[i].s1parameters.bw, nodes[i].s1parameters.cr, nodes[i].s1parameters.txpow, nodes[i].dist, bsz - nodes[i].z )
         #dummynodes.append(node)
         env.process(transmit(env,node, chanl))
 

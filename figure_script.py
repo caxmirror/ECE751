@@ -79,7 +79,7 @@ def make_plot(df1, df2,col="OverallEnergy"):
     plt.ylabel(f'{col}')
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"./figures/{col}_figure.pdf")
+    plt.savefig(f"./figures/{col}_figure.png")
 
 def main():
     # Setup argument parser

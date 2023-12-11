@@ -46,6 +46,7 @@ rcParams['text.usetex'] = True
 
 # turn on/off graphics
 graphics = 0
+base_station_model =  False
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3
@@ -352,11 +353,13 @@ class myNode():
             b = random.random()
             if b<a:
                 a,b = b,a
-            # posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
-            # posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
-            
-            posx = 100+bsx
-            posy = 0
+                
+            if base_station_model:
+                posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
+                posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
+            else:
+                posx = 100+bsx
+                posy = 0
             
             if len(nodes) > 0:
                 for index, n in enumerate(nodes):
