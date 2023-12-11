@@ -45,7 +45,7 @@ rcParams['font.size'] = 18
 rcParams['text.usetex'] = True
 
 # turn on/off graphics
-graphics = 1
+graphics = 0
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3
@@ -352,8 +352,12 @@ class myNode():
             b = random.random()
             if b<a:
                 a,b = b,a
-            posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
-            posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
+            # posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
+            # posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
+            
+            posx = 100+bsx
+            posy = 0
+            
             if len(nodes) > 0:
                 for index, n in enumerate(nodes):
                     dist = np.sqrt(((abs(n.x-posx))**2)+((abs(n.y-posy))**2))
@@ -668,13 +672,19 @@ def transmit(env,node, chanl):
 #
 # "main" program
 #
-
+set_bses = False
 # get arguments
 if len(sys.argv) >= 4:
     nrNodes = int(sys.argv[1])
     datasize = int(sys.argv[2])
     full_collision = int(sys.argv[3])
     Rnd = random.seed(int(sys.argv[4]))
+    
+    if len(sys.argv) >= 7:
+        bsx = float(sys.argv[6])
+        bsy = float(sys.argv[7])
+        set_bses = True
+    
     print("Nodes:", nrNodes)
     print("DataSize [bytes]", datasize)
     print("Full Collision: ", full_collision)
@@ -727,8 +737,10 @@ maxDist = d0*(10**((Lpl-Lpld0)/(10.0*gamma)))
 print("maxDist:", maxDist)
 
 # base station placement
-bsx = maxDist+10
-bsy = maxDist+10
+if not set_bses:
+    bsx = maxDist+10
+    bsy = maxDist+10
+
 xmax = bsx + maxDist + 10
 ymax = bsy + maxDist + 10
 
@@ -838,6 +850,12 @@ print("DER method 2:", der2)
 
 # data extraction rate per node
 for i in range(0,nrNodes):
+    
+    tmp_x = nodes[i].x
+    tmp_y = nodes[i].y
+    
+    print(f"X:{tmp_x}\tY:{tmp_y}")
+    
     tempdists[i] = nodes[i].dist
     nodeder1[i] = ((nodes[i].sent-nodes[i].coll)/(float(nodes[i].sent)) if float(nodes[i].sent)!=0 else 0)
     nodeder2[i] = (nodes[i].recv/(float(nodes[i].sent)) if float(nodes[i].sent)!=0 else 0)

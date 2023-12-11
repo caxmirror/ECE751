@@ -39,7 +39,7 @@ import os
 import operator
 
 # turn on/off graphics
-graphics = 1
+graphics = 0
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3
@@ -338,7 +338,6 @@ class myNode():
         self.z = 0
         self.maxHeight = maxHeight
         
-        self.last_z = 0
         
         # this is very complex prodecure for placing nodes
         # and ensure minimum distance between each pair of nodes
@@ -350,22 +349,22 @@ class myNode():
             b = random.random()
             if b<a:
                 a,b = b,a
-            posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
-            posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
+            # posx = b*maxDist*math.cos(2*math.pi*a/b)+bsx
+            # posy = b*maxDist*math.sin(2*math.pi*a/b)+bsy
             
+            posx = bsx+100
+            posy = 0
             
             if len(nodes) > 0:
                 for index, n in enumerate(nodes):
                     
-                    posz = random.uniform(0, self.maxHeight)
-
+                    posz = random.uniform(-self.maxHeight, self.maxHeight)
                     dist = np.sqrt(((abs(n.x-posx))**2)+((abs(n.y-posy))**2)+((abs(n.z-posz))**2))
                     if dist >= 10:
                         found = 1
                         self.x = posx
                         self.y = posy
                         self.z = posz
-                        self.last_z = self.z - n.z
                     else:
                         rounds = rounds + 1
                         if rounds == 100:
@@ -378,7 +377,7 @@ class myNode():
                 self.y = posy
                 self.z = posz
                 found = 1
-        self.dist = np.sqrt((self.x-bsx)*(self.x-bsx)+(self.y-bsy)*(self.y-bsy)+(self.z- (bsz + self.last_z) )*(self.z- (bsz + self.last_z)))
+        self.dist = np.sqrt((self.x-bsx)*(self.x-bsx)+(self.y-bsy)*(self.y-bsy)+(self.z- bsz)*(self.z- bsz))
         print(('node %d' %nodeid, "x", self.x, "y", self.y, "z", self.z, "dist: ", self.dist))
         # graphics for node
         global graphics
@@ -676,16 +675,26 @@ def transmit(env,node, chanl):
 # "main" program
 #
 
+set_bses = False
 # get arguments
 if len(sys.argv) >= 4:
     nrNodes = int(sys.argv[1])
     datasize = int(sys.argv[2])
     full_collision = int(sys.argv[3])
     Rnd = random.seed(int(sys.argv[4]))
+    
+    if len(sys.argv) >= 7:
+        bsx = float(sys.argv[6])
+        bsy = float(sys.argv[7])
+        bsz = float(sys.argv[8])
+        set_bses = True
+    
     print("Nodes:", nrNodes)
     print("DataSize [bytes]", datasize)
     print("Full Collision: ", full_collision)
     print("Random Seed: ", int(sys.argv[4]))
+    
+    
 else:
     print("usage: ./confirmabletdmaSFTX <nodes> <datasize> <collision> <randomseed>")
     exit(-1)
@@ -734,10 +743,12 @@ maxDist = d0*(10**((Lpl-Lpld0)/(10.0*gamma)))
 maxHeight = 50
 print("maxDist:", maxDist)
 
+
 # base station placement
-bsx = maxDist+10
-bsy = maxDist+10
-bsz = 0
+if not set_bses:
+    bsx = maxDist+10
+    bsy = maxDist+10
+    bsz = 0
 
 
 xmax = bsx + maxDist + 10
@@ -859,6 +870,12 @@ print("DER method 2:", der2)
 
 # data extraction rate per node
 for i in range(0,nrNodes):
+    tmp_x = nodes[i].x
+    tmp_y = nodes[i].y
+    tmp_z = nodes[i].z
+    
+    print(f"X:{tmp_x}\tY:{tmp_y}\tZ:{tmp_z}")
+    
     tempdists[i] = nodes[i].dist
     nodeder1[i] = ((nodes[i].sent-nodes[i].coll)/(float(nodes[i].sent)) if float(nodes[i].sent)!=0 else 0)
     nodeder2[i] = (nodes[i].recv/(float(nodes[i].sent)) if float(nodes[i].sent)!=0 else 0)
