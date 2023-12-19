@@ -40,7 +40,7 @@ def calculate_drone_energy_2d(x0, y0, x1, y1, distance_rate):
     distance = ((x1 - x0)**2 + (y1 - y0)**2)**0.5
 
     # Calculate total energy consumption
-    energy = distance_rate * distance
+    energy = 16.248*distance - 0.045
 
     return energy
 
@@ -63,11 +63,14 @@ def calculate_drone_energy(x0, y0, z0, x1, y1, z1, distance_rate, altitude_rate)
     # Calculate the altitude change
     altitude_change = abs(z1 - z0)
 
+    
+    term1 = 16.248*distance - 0.045
+    
     if z1-z0 > 0:
         # Calculate total energy consumption
-        energy = distance_rate * distance + altitude_rate * altitude_change
+        energy = term1 + (315*altitude_change - 211.261)
     else:
-        energy = distance_rate * distance + altitude_rate * altitude_change * 0.5 #accounting for gravity making it easier to go down rather than up.
+        energy = term1 + (68.956*altitude_change - 65.183)
         
     return energy
 
@@ -162,7 +165,7 @@ def main():
     val2_range = [64]
     val3_range = [600]
     val4_range = [1]
-    val5_range = [5*i for i in range(1,2)]  # You can define your own ranges
+    val5_range = [5*i for i in range(1,20)]  # You can define your own ranges
 
     averages2d = []
     averages3d = []
@@ -200,32 +203,36 @@ def main():
                 
     num_averages = len(averages2d)
     x = range(num_averages)
-
-    plt.bar(x, averages2d, width=0.4, label='2D Averages', align='center')
-    plt.bar(x, averages3d, width=0.4, label='3D Averages', align='edge')
+    
+    # Assuming some sample data for demonstration purposes
+    # Plotting the bar chart with larger figures
+    plt.figure(figsize=(10, 6))  # Increased figure size
+    x = np.arange(len(val5_range))
+    plt.bar(x - 0.2, averages2d, width=0.4, label='2D Averages', align='center')
+    plt.bar(x + 0.2, averages3d, width=0.4, label='3D Averages', align='center')
 
     plt.xlabel('Different Averages')
     plt.ylabel('Average Energy Consumption')
     plt.title('Comparison of Multiple Average Energy Consumptions in 2D and 3D')
     plt.legend()
-
-    # Setting x-ticks to show labels for each group of averages
     plt.xticks(x, [f'0-{i}' for i in val5_range])
-
+    plt.tight_layout()
     plt.savefig("./figures/average_energy.png")
     plt.clf()
-    
-    
-    plt.plot(range(len(val5_range)),average_nodes, label="3D")
-    plt.plot(range(len(val5_range)),average_nodes_2d, label="2D")
-    
+
+    # Plotting the line chart with larger figures
+    plt.figure(figsize=(10, 6))  # Increased figure size
+    plt.plot(range(len(val5_range)), average_nodes, label="3D")
+    plt.plot(range(len(val5_range)), average_nodes_2d, label="2D")
+
     plt.xlabel('Z-Axis Range')
     plt.ylabel('Average Number of Nodes Reachable')
-    plt.title('Comparison of Multiple Average Energy Consumptions in 2D and 3D')
+    plt.title('Comparison of Reachable Nodes in 2D and 3D')
     plt.xticks(x, [f'0-{i}' for i in val5_range])
-    
+    plt.tight_layout()
     plt.savefig("./figures/average_reachable_nodes.png")
-    
+    plt.clf()
+        
 
 
 if __name__ == "__main__":
