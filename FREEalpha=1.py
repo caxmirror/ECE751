@@ -46,7 +46,7 @@ rcParams['text.usetex'] = True
 
 # turn on/off graphics
 graphics = 0
-base_station_model =  False
+base_station_model =  True
 
 # this is an array with measured values for sensitivity
 # see paper, Table 3

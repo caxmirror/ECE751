@@ -1,9 +1,13 @@
 import argparse
 import ast
+
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import scipy.stats as stats
+
 from matplotlib import rcParams
+
 
 def parse_data(filename):
     # Define a list to store all parsed data
@@ -62,6 +66,14 @@ def find_largest_differences(df1, df2):
     return largest_differences
 
 
+#T-Test function
+def compare_sets(set1, set2):
+    u_stat, p_value = stats.mannwhitneyu(set1, set2, alternative='two-sided')
+
+    print("U-statistic:", u_stat)
+    print("P-value:", p_value)
+
+
 def make_plot(df1, df2,col="OverallEnergy"):
     plt.figure(figsize=(10, 6))
     
@@ -74,12 +86,15 @@ def make_plot(df1, df2,col="OverallEnergy"):
     plt.plot(df1[col], label='2D Simulation')
     plt.plot(df2[col], label='3D Simulation')
 
+    print(col)
+    compare_sets(df1[col],df2[col])
+
     plt.title(f'{col} Comparison')
     plt.xlabel('Number of Nodes')
     plt.ylabel(f'{col}')
     plt.legend()
     plt.grid(True)
-    plt.savefig(f"./figures/{col}_figure.png")
+    plt.savefig(f"./figures/{col}_figure.pdf")
 
 def main():
     # Setup argument parser
